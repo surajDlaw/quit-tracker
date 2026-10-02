@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>Quit Tracker</title>
+<meta name="theme-color" content="#0a0a0a" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icon-192.png" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+
+<style>
+  :root{
+    --bg: #0a0a0a;
+    --surface: #151515;
+    --surface-2: #1e1e1e;
+    --text: #f2f2f2;
+    --text-dim: #9a9a9a;
+    --accent: #34d399;
+    --danger: #f87171;
+    --border: #2a2a2a;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin:0; padding:0; height:100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    overscroll-behavior: none;
+  }
+  #app {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
+    text-align: center;
+  }
+
+  /* ---------- Onboarding ---------- */
+  .onboard {
+    width: 100%;
+    max-width: 360px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .onboard h1 { font-size: 22px; font-weight: 600; margin: 0 0 4px; }
+  .onboard p.sub { color: var(--text-dim); font-size: 14px; margin: 0 0 8px; }
+  .field { text-align: left; }
+  .field label { display:block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px; letter-spacing: .02em; }
+  input[type="text"], input[type="datetime-local"] {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 16px;
+    outline: none;
+  }
+  input[type="text"]:focus, input[type="datetime-local"]:focus { border-color: var(--accent); }
+  .row-btns { display:flex; gap:10px; }
+  .btn {
+    border: none;
+    border-radius: 12px;
+    padding: 13px 16px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    flex: 1;
+  }
+  .btn-primary { background: var(--accent); color: #06251a; }
+  .btn-secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+  .btn-danger-ghost { background: transparent; color: var(--danger); border: 1px solid rgba(248,113,113,.35); }
+
+  /* ---------- Main tracker screen ---------- */
+  .tracker { width: 100%; max-width: 360px; display:flex; flex-direction:column; align-items:center; }
+
+  .habit-name {
+    font-size: 14px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    display:flex; align-items:center; gap:6px;
+    margin-bottom: 18px;
+  }
+  .habit-name button {
+    background:none; border:none; color: var(--text-dim);
+    font-size: 13px; cursor:pointer; padding: 2px 4px;
+  }
+
+  .counter { line-height: 1; margin: 6px 0 10px; }
+  .counter .num { font-size: 76px; font-weight: 700; letter-spacing: -0.02em; }
+  .counter .unit { font-size: 20px; font-weight: 500; color: var(--text-dim); margin-top: 6px; }
+
+  .subtext { color: var(--text-dim); font-size: 14px; margin-top: 8px; }
+  .subtext strong { color: var(--text); font-weight: 600; }
+
+  .quit-since { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
+
+  .breakdown {
+    display:flex; gap: 18px; margin-top: 22px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 14px 22px;
+  }
+  .breakdown div { display:flex; flex-direction:column; align-items:center; min-width: 46px; }
+  .breakdown .b-num { font-size: 20px; font-weight: 700; }
+  .breakdown .b-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .05em; margin-top: 2px; }
+
+  .message {
+    margin-top: 26px;
+    font-size: 14px;
+    color: var(--accent);
+    font-weight: 500;
+    min-height: 20px;
+  }
+
+  .actions { margin-top: 40px; display:flex; flex-direction:column; gap: 10px; width:100%; }
+  .reset-link {
+    background:none; border:none; color: var(--text-dim);
+    font-size: 13px; text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor:pointer; padding: 6px;
+  }
+  .history-link {
+    background:none; border:none; color: var(--text-dim);
+    font-size: 12px; opacity:.7; cursor:pointer; padding: 4px;
+  }
+
+  /* ---------- Modal ---------- */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.6);
+    display:flex; align-items:flex-end; justify-content:center;
+    z-index: 50;
+  }
+  .sheet {
+    width: 100%; max-width: 420px;
+    background: var(--surface);
+    border-radius: 20px 20px 0 0;
+    padding: 22px 20px calc(22px + env(safe-area-inset-bottom));
+    display:flex; flex-direction:column; gap: 14px;
+    animation: slideUp .18s ease-out;
+  }
+  @keyframes slideUp { from { transform: translateY(16px); opacity:0;} to { transform:translateY(0); opacity:1; } }
+  .sheet h2 { margin:0; font-size: 17px; }
+  .sheet p.hint { margin:0; font-size: 13px; color: var(--text-dim); }
+
+  .history-list { text-align:left; max-height: 220px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; }
+  .history-item {
+    background: var(--surface-2);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 13px;
+    display:flex; justify-content:space-between; gap: 10px;
+  }
+  .history-item .h-days { font-weight:700; }
+  .history-item .h-meta { color: var(--text-dim); font-size: 11px; }
+  .empty-note { color: var(--text-dim); font-size: 13px; padding: 8px 0; }
+
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  const STORAGE_KEY = "quitTracker.state.v1";
+
+  /** State shape:
+   * {
+   *   habit: string,
+   *   quitAt: number (ms epoch),
+   *   history: [{ habit, quitAt, endedAt, days }]
+   * }
+   */
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+  function saveState(state) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  let state = loadState();
+  const app = document.getElementById("app");
+
+  function nowLocalDatetimeValue(ts) {
+    const d = new Date(ts);
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function formatExact(ts) {
+    const d = new Date(ts);
+    return d.toLocaleString(undefined, {
+      weekday: "short", year: "numeric", month: "short", day: "numeric",
+      hour: "2-digit", minute: "2-digit"
+    });
+  }
+
+  function diffParts(fromTs, toTs) {
+    let ms = Math.max(0, toTs - fromTs);
+    const days = Math.floor(ms / 86400000);
+    ms -= days * 86400000;
+    const hours = Math.floor(ms / 3600000);
+    ms -= hours * 3600000;
+    const minutes = Math.floor(ms / 60000);
+    return { days, hours, minutes };
+  }
+
+  const MESSAGES = [
+    { max: 0, text: "Every streak starts at zero. You've got this." },
+    { max: 1, text: "Day one is the hardest. You're through it." },
+    { max: 3, text: "Small steps. Keep going." },
+    { max: 7, text: "A full week. Momentum is building." },
+    { max: 14, text: "Two weeks in — this is becoming real." },
+    { max: 30, text: "Almost a month. Stay steady." },
+    { max: 90, text: "This is a habit now — the new one." },
+    { max: 180, text: "Half a year of discipline. Remarkable." },
+    { max: 365, text: "Nearly a year. Don't look back." },
+    { max: Infinity, text: "This is who you are now." }
+  ];
+  function messageFor(days) {
+    return MESSAGES.find((m) => days <= m.max).text;
+  }
+
+  // ---------------- Rendering ----------------
+
+  function render() {
+    app.innerHTML = "";
+    if (!state) {
+      renderOnboarding();
+    } else {
+      renderTracker();
+    }
+  }
+
+  function renderOnboarding() {
+    const wrap = document.createElement("div");
+    wrap.className = "onboard";
+    wrap.innerHTML = `
+      <h1>Set up your tracker</h1>
+      <p class="sub">Name the habit and set when you stopped. You can change this anytime.</p>
+      <div class="field">
+        <label for="habitInput">Habit</label>
+        <input type="text" id="habitInput" placeholder="e.g. Smoking" maxlength="40" />
+      </div>
+      <div class="field">
+        <label for="dateInput">Quit date &amp; time</label>
+        <input type="datetime-local" id="dateInput" />
+      </div>
+      <div class="row-btns">
+        <button class="btn btn-secondary" id="startNowBtn" type="button">Start now</button>
+        <button class="btn btn-primary" id="beginBtn" type="button">Begin</button>
+      </div>
+    `;
+    app.appendChild(wrap);
+
+    const habitInput = wrap.querySelector("#habitInput");
+    const dateInput = wrap.querySelector("#dateInput");
+    dateInput.value = nowLocalDatetimeValue(Date.now());
+
+    wrap.querySelector("#startNowBtn").addEventListener("click", () => {
+      dateInput.value = nowLocalDatetimeValue(Date.now());
+    });
+
+    wrap.querySelector("#beginBtn").addEventListener("click", () => {
+      const habit = habitInput.value.trim() || "My habit";
+      const ts = new Date(dateInput.value).getTime();
+      const quitAt = isNaN(ts) ? Date.now() : ts;
+      state = { habit, quitAt, history: [] };
+      saveState(state);
+      render();
+    });
+  }
+
+  let tickHandle = null;
+
+  function renderTracker() {
+    if (tickHandle) clearInterval(tickHandle);
+
+    const wrap = document.createElement("div");
+    wrap.className = "tracker";
+    wrap.innerHTML = `
+      <div class="habit-name">
+        <span id="habitLabel"></span>
+        <button id="editHabitBtn" type="button" aria-label="Edit habit name">✎</button>
+      </div>
+
+      <div class="counter">
+        <div class="num" id="dayNum">0</div>
+        <div class="unit" id="dayUnit">Days</div>
+      </div>
+
+      <div class="subtext">You haven't done it for <strong id="sinceText"></strong></div>
+      <div class="quit-since" id="quitSince"></div>
+
+      <div class="breakdown">
+        <div><span class="b-num" id="bDays">0</span><span class="b-label">Days</span></div>
+        <div><span class="b-num" id="bHours">0</span><span class="b-label">Hours</span></div>
+        <div><span class="b-num" id="bMins">0</span><span class="b-label">Mins</span></div>
+      </div>
+
+      <div class="message" id="messageText"></div>
+
+      <div class="actions">
+        <button class="reset-link" id="resetBtn" type="button">Reset streak</button>
+        <button class="history-link" id="historyBtn" type="button">History</button>
+      </div>
+    `;
+    app.appendChild(wrap);
+
+    const dayNum = wrap.querySelector("#dayNum");
+    const dayUnit = wrap.querySelector("#dayUnit");
+    const sinceText = wrap.querySelector("#sinceText");
+    const quitSince = wrap.querySelector("#quitSince");
+    const bDays = wrap.querySelector("#bDays");
+    const bHours = wrap.querySelector("#bHours");
+    const bMins = wrap.querySelector("#bMins");
+    const messageText = wrap.querySelector("#messageText");
+    const habitLabel = wrap.querySelector("#habitLabel");
+
+    function paint() {
+      const parts = diffParts(state.quitAt, Date.now());
+      dayNum.textContent = parts.days;
+      dayUnit.textContent = parts.days === 1 ? "Day" : "Days";
+      sinceText.textContent = state.habit.toLowerCase();
+      quitSince.textContent = "Since " + formatExact(state.quitAt);
+      bDays.textContent = parts.days;
+      bHours.textContent = parts.hours;
+      bMins.textContent = parts.minutes;
+      messageText.textContent = messageFor(parts.days);
+      habitLabel.textContent = state.habit;
+    }
+    paint();
+    tickHandle = setInterval(paint, 1000);
+
+    wrap.querySelector("#editHabitBtn").addEventListener("click", openEditHabit);
+    wrap.querySelector("#resetBtn").addEventListener("click", openResetSheet);
+    wrap.querySelector("#historyBtn").addEventListener("click", openHistorySheet);
+  }
+
+  // ---------------- Modals ----------------
+
+  function openSheet(innerHTML, onMount) {
+    const overlay = document.createElement("div");
+    overlay.className = "overlay";
+    overlay.innerHTML = `<div class="sheet">${innerHTML}</div>`;
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) document.body.removeChild(overlay);
+    });
+    document.body.appendChild(overlay);
+    if (onMount) onMount(overlay);
+    return overlay;
+  }
+
+  function openEditHabit() {
+    openSheet(
+      `
+      <h2>Edit habit name</h2>
+      <div class="field">
+        <input type="text" id="editHabitInput" maxlength="40" />
+      </div>
+      <div class="row-btns">
+        <button class="btn btn-secondary" id="cancelEdit" type="button">Cancel</button>
+        <button class="btn btn-primary" id="saveEdit" type="button">Save</button>
+      </div>
+      `,
+      (overlay) => {
+        const input = overlay.querySelector("#editHabitInput");
+        input.value = state.habit;
+        overlay.querySelector("#cancelEdit").addEventListener("click", () => document.body.removeChild(overlay));
+        overlay.querySelector("#saveEdit").addEventListener("click", () => {
+          const val = input.value.trim();
+          if (val) {
+            state.habit = val;
+            saveState(state);
+          }
+          document.body.removeChild(overlay);
+          render();
+        });
+      }
+    );
+  }
+
+  function openResetSheet() {
+    openSheet(
+      `
+      <h2>Reset streak?</h2>
+      <p class="hint">This ends your current streak and saves it to history. Choose when the new streak starts.</p>
+      <div class="field">
+        <label for="resetDateInput">New quit date &amp; time</label>
+        <input type="datetime-local" id="resetDateInput" />
+      </div>
+      <div class="row-btns">
+        <button class="btn btn-ghost" id="cancelReset" type="button">Cancel</button>
+        <button class="btn btn-danger-ghost" id="confirmReset" type="button">Reset now</button>
+      </div>
+      `,
+      (overlay) => {
+        const dateInput = overlay.querySelector("#resetDateInput");
+        dateInput.value = nowLocalDatetimeValue(Date.now());
+        overlay.querySelector("#cancelReset").addEventListener("click", () => document.body.removeChild(overlay));
+        overlay.querySelector("#confirmReset").addEventListener("click", () => {
+          const endedAt = Date.now();
+          const parts = diffParts(state.quitAt, endedAt);
+          state.history = state.history || [];
+          state.history.unshift({
+            habit: state.habit,
+            quitAt: state.quitAt,
+            endedAt: endedAt,
+            days: parts.days
+          });
+          const ts = new Date(dateInput.value).getTime();
+          state.quitAt = isNaN(ts) ? Date.now() : ts;
+          saveState(state);
+          document.body.removeChild(overlay);
+          render();
+        });
+      }
+    );
+  }
+
+  function openHistorySheet() {
+    const history = (state.history || []);
+    const itemsHtml = history.length
+      ? history
+          .map(
+            (h) => `
+        <div class="history-item">
+          <div>
+            <div class="h-days">${h.days} ${h.days === 1 ? "day" : "days"}</div>
+            <div class="h-meta">${escapeHtml(h.habit)}</div>
+          </div>
+          <div class="h-meta">ended ${formatExact(h.endedAt)}</div>
+        </div>`
+          )
+          .join("")
+      : `<div class="empty-note">No past streaks yet.</div>`;
+
+    openSheet(
+      `
+      <h2>Streak history</h2>
+      <div class="history-list">${itemsHtml}</div>
+      <button class="btn btn-secondary" id="closeHistory" type="button">Close</button>
+      `,
+      (overlay) => {
+        overlay.querySelector("#closeHistory").addEventListener("click", () => document.body.removeChild(overlay));
+      }
+    );
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // ---------------- Init ----------------
+  render();
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("service-worker.js").catch(() => {});
+    });
+  }
+})();
+</script>
+</body>
+</html>
